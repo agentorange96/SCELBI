@@ -14,25 +14,6 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L SamacSys_Parts:SN74LS74AN Z2
-U 1 1 606F241D
-P 5700 3150
-F 0 "Z2" H 6300 3415 50  0000 C CNN
-F 1 "SN74LS74AN" H 6300 3324 50  0000 C CNN
-F 2 "Package_DIP:DIP-14_W7.62mm_LongPads" H 6750 3250 50  0001 L CNN
-F 3 "http://www.ti.com/lit/gpn/sn74ls74a" H 6750 3150 50  0001 L CNN
-F 4 "Dual D-type pos.-edge-triggered flip-flops with preset and clear" H 6750 3050 50  0001 L CNN "Description"
-F 5 "5.08" H 6750 2950 50  0001 L CNN "Height"
-F 6 "Texas Instruments" H 6750 2850 50  0001 L CNN "Manufacturer_Name"
-F 7 "SN74LS74AN" H 6750 2750 50  0001 L CNN "Manufacturer_Part_Number"
-F 8 "595-SN74LS74AN" H 6750 2650 50  0001 L CNN "Mouser Part Number"
-F 9 "https://www.mouser.co.uk/ProductDetail/Texas-Instruments/SN74LS74AN/?qs=b0gIXGU74fP41yYZQO4%252BKQ%3D%3D" H 6750 2550 50  0001 L CNN "Mouser Price/Stock"
-F 10 "SN74LS74AN" H 6750 2450 50  0001 L CNN "Arrow Part Number"
-F 11 "https://www.arrow.com/en/products/sn74ls74an/texas-instruments" H 6750 2350 50  0001 L CNN "Arrow Price/Stock"
-	1    5700 3150
-	1    0    0    -1  
-$EndComp
-$Comp
 L SamacSys_Parts:MAX202CPE+ Z1
 U 1 1 606F5208
 P 5700 1900
@@ -388,13 +369,7 @@ Wire Wire Line
 Wire Wire Line
 	7000 3650 6900 3650
 Wire Wire Line
-	7000 2500 7000 3650
-Wire Wire Line
 	7050 3950 3850 3950
-Wire Wire Line
-	7050 3450 7050 3950
-Wire Wire Line
-	6900 3450 7050 3450
 Wire Wire Line
 	5700 2600 5700 2800
 Wire Wire Line
@@ -419,10 +394,6 @@ Connection ~ 8050 2450
 Wire Wire Line
 	8050 2450 8050 3900
 Wire Wire Line
-	6900 3350 7150 3350
-Wire Wire Line
-	7150 3350 7150 4200
-Wire Wire Line
 	7150 4200 3600 4200
 Wire Wire Line
 	3600 4200 3600 3750
@@ -445,7 +416,7 @@ V-
 Text Label 5650 2600 0    50   ~ 0
 TxD
 Text Label 5700 2700 0    50   ~ 0
-RTS
+CTS
 Text Label 7000 2900 0    50   ~ 0
 TxIn
 Text Label 6950 2300 0    50   ~ 0
@@ -456,8 +427,37 @@ Text Label 7000 2100 0    50   ~ 0
 RxD
 Text Label 7300 3250 0    50   ~ 0
 PullUp
-Text Label 6950 3450 0    50   ~ 0
-Tx
 Text Label 6950 3350 0    50   ~ 0
+Tx
+Text Label 6950 3450 0    50   ~ 0
 STRB
+Wire Wire Line
+	7000 2500 7000 3650
+$Comp
+L SamacSys_Parts:SN74LS74AN Z2
+U 1 1 606F241D
+P 5700 3150
+F 0 "Z2" H 6300 3415 50  0000 C CNN
+F 1 "SN74LS74AN" H 6300 3324 50  0000 C CNN
+F 2 "Package_DIP:DIP-14_W7.62mm_LongPads" H 6750 3250 50  0001 L CNN
+F 3 "http://www.ti.com/lit/gpn/sn74ls74a" H 6750 3150 50  0001 L CNN
+F 4 "Dual D-type pos.-edge-triggered flip-flops with preset and clear" H 6750 3050 50  0001 L CNN "Description"
+F 5 "5.08" H 6750 2950 50  0001 L CNN "Height"
+F 6 "Texas Instruments" H 6750 2850 50  0001 L CNN "Manufacturer_Name"
+F 7 "SN74LS74AN" H 6750 2750 50  0001 L CNN "Manufacturer_Part_Number"
+F 8 "595-SN74LS74AN" H 6750 2650 50  0001 L CNN "Mouser Part Number"
+F 9 "https://www.mouser.co.uk/ProductDetail/Texas-Instruments/SN74LS74AN/?qs=b0gIXGU74fP41yYZQO4%252BKQ%3D%3D" H 6750 2550 50  0001 L CNN "Mouser Price/Stock"
+F 10 "SN74LS74AN" H 6750 2450 50  0001 L CNN "Arrow Part Number"
+F 11 "https://www.arrow.com/en/products/sn74ls74an/texas-instruments" H 6750 2350 50  0001 L CNN "Arrow Price/Stock"
+	1    5700 3150
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7050 3350 6900 3350
+Wire Wire Line
+	7050 3350 7050 3950
+Wire Wire Line
+	6900 3450 7150 3450
+Wire Wire Line
+	7150 3450 7150 4200
 $EndSCHEMATC
