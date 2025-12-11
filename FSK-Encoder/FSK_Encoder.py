@@ -50,7 +50,7 @@ def encode_high_address(addr):
     cmd = nibbles_to_tapebyte(0x1,0x1)
     loc = nibbles_to_tapebyte(hi,lo)
     #return [cmd, b1, b2]
-    return [cmd,loc]
+    return [cmd,4,loc,0]
 
 
 def encode_low_address(addr):
@@ -69,7 +69,7 @@ def encode_low_address(addr):
     cmd = nibbles_to_tapebyte(0x2,0x2)
     loc = nibbles_to_tapebyte(hi,lo)
     #return [cmd, b1, b2]
-    return [cmd,loc]
+    return [cmd,5,loc,0]
 
 
 def encode_data_byte(value):
@@ -86,7 +86,7 @@ def encode_data_byte(value):
     inc_f = nibble_to_tapebyte(0xF)
     inc_0 = nibble_to_tapebyte(0x0)
     #return [b1, b2, inc_f, inc_0]
-    return [b1, b2]
+    return [b1,7,b2,8]
 
 
 # (We keep encode_last_data_byte removed — documented format doesn't require a special last marker.)
@@ -222,7 +222,7 @@ def main():
     last_addr = None
 
     # Start command
-    encoded_bytes += [nibbles_to_tapebyte(0x0,0x8)]
+    encoded_bytes += [nibbles_to_tapebyte(0x0,0x8),2]
     
     # Build SCELBI-format byte stream
     for addr in addrs:
@@ -234,7 +234,7 @@ def main():
             AL = addr & 0xFFFF
 
             encoded_bytes += encode_high_address(addr)
-            encoded_bytes += [nibbles_to_tapebyte(0x0,0x8)]
+            encoded_bytes += [nibbles_to_tapebyte(0x0,0x8),1]
             encoded_bytes += encode_low_address(addr)
 
         # Data byte (use documented form; include F0 increment pair)
@@ -242,9 +242,9 @@ def main():
 
         last_addr = addr
 
-    encoded_bytes += [nibbles_to_tapebyte(0x5,0x8)]
-    encoded_bytes += [nibbles_to_tapebyte(0x5,0xD)]
-    encoded_bytes += [nibbles_to_tapebyte(0x0,0x1)]
+    encoded_bytes += [nibbles_to_tapebyte(0x5,0x8),0]
+    encoded_bytes += [nibbles_to_tapebyte(0x4,0xC),1]
+    encoded_bytes += [nibbles_to_tapebyte(0x0,0x1),0]
     print(f"Total SCELBI bytes (nibbles & control bytes): {len(encoded_bytes)}")
 
     # Expand to bitstream using the existing byte-to-bitstream (start-bit = 1)
@@ -256,11 +256,16 @@ def main():
         bitstream.append(0)
 
     # Add data to bitstream
+    counter = 0
     for b in encoded_bytes:
-        bitstream.extend(byte_to_bitstream(b))
-        # Add 1 byte of spacing (preserve your existing timing behavior)
-        for i in range(2):
-            bitstream.append(0)
+        if counter%2 == 0:
+            #Add byte
+            bitstream.extend(byte_to_bitstream(b))
+        else:
+            # Add prescribed delay
+            for i in range(b):
+                bitstream.append(0)
+        counter = counter + 1
 
     # Create 1s tail
     tail_length = int(0.5 * lowfreq)
