@@ -1,0 +1,44 @@
+Data Stream in Bytes:
+NIBBLE1	NIBBLE2	DELAY	COMMENTS
+0000	0001	2		Start of transmission
+1000	1000	7		Next byte is high address
+0000	0000	0		High address
+0000	0001 	1
+0100	0100	5		Next byte is low address
+0000	0000	0		Low address
+1010	0001	7		High nibble of 125
+1010	0001	8		Low  nibble of 125
+1010	0001	0 
+0010	0011	1
+0000	1000	-
+
+Data Stream in Nibbles
+NIBBLE1	COMMENTS
+0000
+0001	Start of transmission
+1000	Next byte is high address
+1000	Next byte is high address
+0000	High byte of high address
+0000	Low  byte of high address
+0000
+0001
+0100	Next nibble is low  address
+0100	Next nibble is low  address
+0000	High nibble of low  address
+0000	Low  nibble of low  address
+1010	High nibble of 125
+0001	Last nibble was data
+1010	Low  nibble of 125
+0001	Last nibble was data
+1010
+0001
+0010
+0011
+0000
+1000
+
+Important Values
+VALUE		BINARY					COMMENTS
+125			0101 0101				Data Value
+125	Encoded	1010 1010				Data Value With Nibbles Reversed
+000000		0000 0000 0000 0000		Address (Forwards and reverse nibbles)

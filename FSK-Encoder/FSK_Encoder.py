@@ -30,6 +30,47 @@ def nibbles_to_tapebyte(nibble1,nibble2):
     """
     return ((nibble1 & 0x0F) << 4) | nibble2
 
+def rearrange_bits(byte):
+    """
+    Rearrange an 8-bit byte so that the output bits are:
+    4 5 6 7 0 1 2 3  (from the original bit positions)
+    """
+    byte &= 0xFF  # ensure it's 8-bit
+
+    # Extract and shift bits into new positions:
+    return (
+        ((byte >> 4) & 1) << 7 |  # input bit 4 -> output bit 7
+        ((byte >> 5) & 1) << 6 |  # input bit 5 -> output bit 6
+        ((byte >> 6) & 1) << 5 |  # input bit 6 -> output bit 5
+        ((byte >> 7) & 1) << 4 |  # input bit 7 -> output bit 4
+        ((byte >> 0) & 1) << 3 |  # input bit 0 -> output bit 3
+        ((byte >> 1) & 1) << 2 |  # input bit 1 -> output bit 2
+        ((byte >> 2) & 1) << 1 |  # input bit 2 -> output bit 1
+        ((byte >> 3) & 1) << 0    # input bit 3 -> output bit 0
+    )
+
+def scelbi_checksum(byte_array):
+    """
+    Compute the SCELBI-style checksum:
+    - Sum all bytes (0–255)
+    - Take the low 8 bits of the sum
+    - Return the two's complement of that value (also 0–255)
+    """
+    filtered_bytes = []
+    counter = 0
+    #filter out delays
+    for byte in byte_array:
+        if counter % 2 == 0:
+            new_byte = rearrange_bits(byte)
+            print("Including byte: " +  "{:08b}".format(new_byte))
+            filtered_bytes += [new_byte]
+        counter = counter + 1
+        
+    total = sum(filtered_bytes) & 0xFF         # keep to 8 bits
+    checksum = (-total) & 0xFF             # two's complement
+    print(f"Checksum: {checksum} - " + "{:08b}".format(checksum))
+    return checksum
+
 # -----------------------------
 # Address and Data Encoders (documented SCELBI nibble format)
 # -----------------------------
@@ -242,9 +283,14 @@ def main():
 
         last_addr = addr
 
+    
+
     encoded_bytes += [nibbles_to_tapebyte(0x5,0x8),0]
+    checksum = scelbi_checksum(encoded_bytes)
     encoded_bytes += [nibbles_to_tapebyte(0x4,0xC),1]
+    checksum = scelbi_checksum(encoded_bytes)
     encoded_bytes += [nibbles_to_tapebyte(0x0,0x1),0]
+    checksum = scelbi_checksum(encoded_bytes)
     print(f"Total SCELBI bytes (nibbles & control bytes): {len(encoded_bytes)}")
 
     # Expand to bitstream using the existing byte-to-bitstream (start-bit = 1)
