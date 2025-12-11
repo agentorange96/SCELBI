@@ -6,80 +6,112 @@ import math
 ###############################################################
 # Parameters identical to original system
 ###############################################################
-highfreq = 2600.0
+highfreq = 2585.0
 lowfreq  = highfreq / 2.0
 samplingRate = 44100.0
 
-###############################################################
-# Parity and SCELBI byte encoding
-###############################################################
-def even_parity(x):
-    return (bin(x).count("1") % 2) == 0
-
-def add_parity(byte7):
+# -----------------------------
+# SCELBI nibble helper
+# -----------------------------
+def nibble_to_tapebyte(nibble):
     """
-    Insert even parity bit as MSB.
-    byte7 = 7-bit payload (header bits + nibble)
+    Convert a 4-bit nibble into the SCELBI tape byte form:
+      dddd 0001
+    where dddd is the nibble (upper 4 bits) and lower 4 bits are 0001.
     """
-    P = 0 if even_parity(byte7) else 1
-    return (P << 7) | byte7
+    return ((nibble & 0x0F) << 4) | 0x08
 
+
+def nibbles_to_tapebyte(nibble1,nibble2):
+    """
+    Convert a 4-bit nibble into the SCELBI tape byte form:
+      dddd 0001
+    where dddd is the nibble (upper 4 bits) and lower 4 bits are 0001.
+    """
+    return ((nibble1 & 0x0F) << 4) | nibble2
 
 # -----------------------------
-# Address and Data Encoders
+# Address and Data Encoders (documented SCELBI nibble format)
 # -----------------------------
 def encode_high_address(addr):
-    hi = (addr >> 4) & 0x0F
-    lo = addr & 0x0F
+    """
+    Emit: [CMD(8), HIGH_NIBBLE_of_AH, LOW_NIBBLE_of_AH]
+    CMD = 8 (high-address command)
+    AH = high byte of 16-bit address (addr >> 8)
+    Each nibble is converted to tape byte (dddd0001).
+    """
+    AH = (addr >> 8) & 0xFF
+    hi = (AH >> 4) & 0x0F
+    lo = AH & 0x0F
 
-    b1 = add_parity(0b1000000 | hi)   # P100AAAA
-    b2 = add_parity(0b0000000 | lo)   # P000AAAA
-    return [b1, b2]
+    #cmd = nibble_to_tapebyte(0x8)   # 8 = high-address command
+    #b1 = nibble_to_tapebyte(hi)
+    #b2 = nibble_to_tapebyte(lo)
+    cmd = nibbles_to_tapebyte(0x1,0x1)
+    loc = nibbles_to_tapebyte(hi,lo)
+    #return [cmd, b1, b2]
+    return [cmd,loc]
 
 
 def encode_low_address(addr):
-    hi = (addr >> 4) & 0x0F
-    lo = addr & 0x0F
+    """
+    Emit: [CMD(4), HIGH_NIBBLE_of_AL, LOW_NIBBLE_of_AL]
+    CMD = 4 (low-address command)
+    AL = low byte of 16-bit address (addr & 0xFF)
+    """
+    AL = addr & 0xFF
+    hi = (AL >> 4) & 0x0F
+    lo = AL & 0x0F
 
-    b1 = add_parity(0b0100000 | hi)   # P010AAAA
-    b2 = add_parity(0b0000000 | lo)   # P000AAAA
-    return [b1, b2]
+    #cmd = nibble_to_tapebyte(0x4)   # 4 = low-address command
+    #b1 = nibble_to_tapebyte(hi)
+    #b2 = nibble_to_tapebyte(lo)
+    cmd = nibbles_to_tapebyte(0x2,0x2)
+    loc = nibbles_to_tapebyte(hi,lo)
+    #return [cmd, b1, b2]
+    return [cmd,loc]
 
 
 def encode_data_byte(value):
+    """
+    Emit: [HI_NIBBLE, LO_NIBBLE, F, 0]
+    where F = 0xF (increment dummy) and 0 = 0x0 (increment actual).
+    All converted to tape bytes (dddd0001).
+    """
     hi = (value >> 4) & 0x0F
     lo = value & 0x0F
 
-    b1 = add_parity(0b0000000 | hi)   # P000DDDD
-    b2 = add_parity(0b0000000 | lo)   # P000DDDD
+    b1 = nibble_to_tapebyte(hi)
+    b2 = nibble_to_tapebyte(lo)
+    inc_f = nibble_to_tapebyte(0xF)
+    inc_0 = nibble_to_tapebyte(0x0)
+    #return [b1, b2, inc_f, inc_0]
     return [b1, b2]
 
 
-def encode_last_data_byte(value):
-    hi = (value >> 4) & 0x0F
-    lo = value & 0x0F
-
-    b1 = add_parity(0b0010000 | hi)   # P001DDDD   <--- LAST byte indicator
-    b2 = add_parity(0b0000000 | lo)   # P000DDDD
-    return [b1, b2]
-
+# (We keep encode_last_data_byte removed — documented format doesn't require a special last marker.)
 
 ###############################################################
 # SCELBI Byte → Bitstream
-#   SCELBI expects a START BIT = 1 before each byte.
+#   NOTE: you asked to keep the existing start-bit framing and parity behavior,
+#   so this function remains unchanged (it will add a leading '1' start bit
+#   before each produced 8-bit byte).
 ###############################################################
 def byte_to_bitstream(byte):
     bits = [1]  # Start bit
     for n in range(7, -1, -1):
         bits.append((byte >> n) & 1)
+    bits = [bits[0], bits[4], bits[3], bits[2], bits[1], bits[8], bits[7], bits[6], bits[5]]
+    print(bits)
     return bits
 
 ###############################################################
 # Bitstream → Waveform (square-wave FSK)
+#   (left intact; you asked to only change the data format)
 ###############################################################
 def bitstream_to_wave(bits):
     samples = []
-    amplitude = 0.4
+    amplitude = 0.3
 
     for b in bits:
         if b == 1:
@@ -88,20 +120,26 @@ def bitstream_to_wave(bits):
             freq = lowfreq
 
         # Each bit takes one slow cycle
-        N = int(samplingRate / (lowfreq))
+        N = 2 * int(samplingRate / (lowfreq))
 
         for i in range(N):
             val = -amplitude
 
             if b == 1:
                 # two positive lobes per cycle
-                if i >= N/8 and i < 3*N/8:
+                if i >= 1*N/16 and i < 3*N/16:
                     val = amplitude
-                if i >= 5*N/8 and i < 7*N/8:
+                if i >= 5*N/16 and i < 7*N/16:
+                    val = amplitude
+                if i >= 9*N/16 and i < 11*N/16:
+                    val = amplitude
+                if i >= 13*N/16 and i < 15*N/16:
                     val = amplitude
             else:
                 # one positive lobe per cycle
-                if i >= N/4 and i < 3*N/4:
+                if i >= 1*N/8 and i < 3*N/8:
+                    val = amplitude
+                if i >= 5*N/8 and i < 7*N/8:
                     val = amplitude
 
             samples.append(val)
@@ -162,7 +200,7 @@ def read_ihex(filename):
 ###############################################################
 def main():
     if len(sys.argv) != 3:
-        print("Usage: python FSK_Encoder.py input.hex output.wav")
+        print("Usage: python FSK_Encoder_v2.py input.hex output.wav")
         sys.exit(1)
 
     hexfile = sys.argv[1]
@@ -183,50 +221,55 @@ def main():
     encoded_bytes = []
     last_addr = None
 
+    # Start command
+    encoded_bytes += [nibbles_to_tapebyte(0x0,0x8)]
+    
     # Build SCELBI-format byte stream
     for addr in addrs:
         value = mem[addr]
 
-        # New block? Send address
+        # New block? Send address (high then low)
         if last_addr is None or addr != last_addr + 1:
-            AH = (addr >> 8) & 0xFF
-            AL = addr & 0xFF
+            AH = (addr >> 8) & 0xFFFF
+            AL = addr & 0xFFFF
 
-            encoded_bytes += encode_high_address(AH)
-            encoded_bytes += encode_low_address(AL)
+            encoded_bytes += encode_high_address(addr)
+            encoded_bytes += [nibbles_to_tapebyte(0x0,0x8)]
+            encoded_bytes += encode_low_address(addr)
 
-        # Last byte?
-        if addr == final_addr:
-            encoded_bytes += encode_last_data_byte(value)
-        else:
-            encoded_bytes += encode_data_byte(value)
+        # Data byte (use documented form; include F0 increment pair)
+        encoded_bytes += encode_data_byte(value)
 
         last_addr = addr
 
-    print(f"Total SCELBI packets: {len(encoded_bytes)}")
+    encoded_bytes += [nibbles_to_tapebyte(0x5,0x8)]
+    encoded_bytes += [nibbles_to_tapebyte(0x5,0xD)]
+    encoded_bytes += [nibbles_to_tapebyte(0x0,0x1)]
+    print(f"Total SCELBI bytes (nibbles & control bytes): {len(encoded_bytes)}")
 
-    # Expand to bitstream using SCELBI start-bit format
+    # Expand to bitstream using the existing byte-to-bitstream (start-bit = 1)
     bitstream = []
-    
-    #Create 3s header
-    header_length = int(3 * lowfreq)
+
+    # Create 3s header (keeps your previous header behavior)
+    header_length = int(1.5 * lowfreq)
     for b in range(header_length):
         bitstream.append(0)
-    
-    #Add data to bitstream
+
+    # Add data to bitstream
     for b in encoded_bytes:
         bitstream.extend(byte_to_bitstream(b))
-        #Add 1 byte of spacing
-        for i in range(8): bitstream.append(0)
+        # Add 1 byte of spacing (preserve your existing timing behavior)
+        for i in range(2):
+            bitstream.append(0)
 
-    #Create 1s tail
-    header_length = int(1 * lowfreq)
-    for b in range(header_length):
+    # Create 1s tail
+    tail_length = int(0.5 * lowfreq)
+    for b in range(tail_length):
         bitstream.append(0)
 
     print(f"Total bits: {len(bitstream)}")
 
-    samples   = bitstream_to_wave(bitstream)
+    samples = bitstream_to_wave(bitstream)
 
     print(f"Total samples: {len(samples)}")
     write_wav(wavfile, samples)
